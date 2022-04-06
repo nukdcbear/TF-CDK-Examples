@@ -11,33 +11,42 @@ def get_my_ip():
 
     return response["ip"]
 
+def get_username():
+    r = requests.get('https://randomuser.me/api/')
+    response = r.json()
+
+    return response["results"][0]["login"]["username"]
+
 class MyStack(TerraformStack):
     def __init__(self, scope: Construct, ns: str):
         super().__init__(scope, ns)
 
         AwsProvider(self, "AWS", region="us-east-2")
 
-        vpcdcb = vpc.Vpc(self, "CustomVpc",
-                        tags = {"Name":"cdktf-dcb-vpc"},
+        userName = get_username()
+        myTag = 'cdktf-' + userName
+
+        myVpc = vpc.Vpc(self, "CustomVpc",
+                        tags = {"Name":myTag + "-vpc"},
                         cidr_block = '10.0.0.0/16')
 
         subnet1 = vpc.Subnet(self, "Subnet1",
-                            vpc_id = vpcdcb.id,
+                            vpc_id = myVpc.id,
                             availability_zone = "us-east-2a",
                             cidr_block = '10.0.1.0/24',
-                            tags = {"Name":"cdktf-dcb-subnet1"})
+                            tags = {"Name":myTag + "subnet1"})
 
         subnet2 = vpc.Subnet(self, "Subnet2",
-                            vpc_id = vpcdcb.id,
+                            vpc_id = myVpc.id,
                             availability_zone = "us-east-2b",
                             cidr_block = '10.0.2.0/24',
-                            tags = {"Name":"cdktf-dcb-subnet2"})
+                            tags = {"Name":myTag + "-subnet2"})
 
         subnet3 = vpc.Subnet(self, "Subnet3",
-                            vpc_id = vpcdcb.id,
+                            vpc_id = myVpc.id,
                             availability_zone = "us-east-2c",
                             cidr_block = '10.0.3.0/24',
-                            tags = {"Name":"cdktf-dcb-subnet3"})
+                            tags = {"Name":myTag + "-subnet3"})
 
         myIp = get_my_ip()
         myCidrBlk = myIp + '/32'
@@ -46,9 +55,9 @@ class MyStack(TerraformStack):
         egress1 = vpc.SecurityGroupEgress(from_port = 0, to_port = 0, protocol = "tcp", cidr_blocks = ['0.0.0.0/0'])
 
         sg = vpc.SecurityGroup(self, "SecurityGroup",
-                            vpc_id = vpcdcb.id,
-                            description = "cdktf-dcb-sg",
-                            tags = {"Name":"cdktf-dcb-sg"},
+                            vpc_id = myVpc.id,
+                            description = myTag + "-sg",
+                            tags = {"Name":myTag + "-sg"},
                             ingress = [ingress1],
                             egress = [egress1])
 
@@ -66,10 +75,10 @@ class MyStack(TerraformStack):
                                 ami = ami.id,
                                 vpc_security_group_ids = [sg.id],
                                 subnet_id = subnet1.id,
-                                tags = {"Name":"cdktf-dcb-instance"})
+                                tags = {"Name":myTag + "-instance"})
 
         TerraformOutput(self, "vpc_id",
-                        value=vpcdcb.id)
+                        value=myVpc.id)
         TerraformOutput(self, "subnet1_id",
                         value=subnet1.id)
         TerraformOutput(self, "subnet2_id",
