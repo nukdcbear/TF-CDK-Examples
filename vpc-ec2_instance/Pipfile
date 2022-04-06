@@ -9,3 +9,4 @@ python_version = "3"
 [packages]
 cdktf = "~=0.10.1"
 cdktf-cdktf-provider-aws = "*"
+requests = "*"

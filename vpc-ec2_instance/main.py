@@ -1,9 +1,15 @@
 #!/usr/bin/env python
+import requests
 from typing import Protocol
 from constructs import Construct
 from cdktf import App, TerraformStack, TerraformOutput
 from cdktf_cdktf_provider_aws import AwsProvider, vpc, ec2
 
+def get_my_ip():
+    r = requests.get('https://api.ipify.org?format=json')
+    response = r.json()
+
+    return response["ip"]
 
 class MyStack(TerraformStack):
     def __init__(self, scope: Construct, ns: str):
@@ -33,7 +39,10 @@ class MyStack(TerraformStack):
                             cidr_block = '10.0.3.0/24',
                             tags = {"Name":"cdktf-dcb-subnet3"})
 
-        ingress1 = vpc.SecurityGroupIngress(from_port = 22, to_port = 22, protocol = "tcp", cidr_blocks = ['65.189.75.63/32'])
+        myIp = get_my_ip()
+        myCidrBlk = myIp + '/32'
+
+        ingress1 = vpc.SecurityGroupIngress(from_port = 22, to_port = 22, protocol = "tcp", cidr_blocks = [myCidrBlk])
         egress1 = vpc.SecurityGroupEgress(from_port = 0, to_port = 0, protocol = "tcp", cidr_blocks = ['0.0.0.0/0'])
 
         sg = vpc.SecurityGroup(self, "SecurityGroup",
