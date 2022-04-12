@@ -1,9 +1,10 @@
 #!/usr/bin/env python
+from re import sub
 import requests
 from typing import Protocol
 from constructs import Construct
-from cdktf import App, TerraformStack, TerraformOutput
-from cdktf_cdktf_provider_aws import AwsProvider, vpc, ec2
+from cdktf import App, TerraformStack, TerraformOutput, Fn, Token
+from cdktf_cdktf_provider_aws import AwsProvider, vpc, ec2, datasources
 
 def get_my_ip():
     r = requests.get('https://api.ipify.org?format=json')
@@ -23,30 +24,58 @@ class MyStack(TerraformStack):
 
         AwsProvider(self, "AWS", region="us-east-2")
 
-        userName = get_username()
+        zones = datasources.DataAwsAvailabilityZones(self, "zones",
+                                                    state = "available")
+
+        # userName = get_username()
+        userName = 'dcb'
         myTag = 'cdktf-' + userName
 
         myVpc = vpc.Vpc(self, "CustomVpc",
                         tags = {"Name":myTag + "-vpc"},
                         cidr_block = '10.0.0.0/16')
 
-        subnet1 = vpc.Subnet(self, "Subnet1",
-                            vpc_id = myVpc.id,
-                            availability_zone = "us-east-2a",
-                            cidr_block = '10.0.1.0/24',
-                            tags = {"Name":myTag + "subnet1"})
+        n = 0
+        for azname in zones.names:
+            n += 1
+            cidrblk = "10.0."+str(n)+".0/24"
+            subnet = vpc.Subnet(self, "Subnet",
+                                vpc_id = myVpc.id,
+                                availability_zone=azname,
+                                cidr_block=cidrblk,
+                                tags = {"Name":myTag + "-subnet"})
 
-        subnet2 = vpc.Subnet(self, "Subnet2",
-                            vpc_id = myVpc.id,
-                            availability_zone = "us-east-2b",
-                            cidr_block = '10.0.2.0/24',
-                            tags = {"Name":myTag + "-subnet2"})
 
-        subnet3 = vpc.Subnet(self, "Subnet3",
-                            vpc_id = myVpc.id,
-                            availability_zone = "us-east-2c",
-                            cidr_block = '10.0.3.0/24',
-                            tags = {"Name":myTag + "-subnet3"})
+        # subnet = vpc.Subnet(self, "Subnet",
+        #                     vpc_id = myVpc.id,
+        #                     availability_zone="${Fn.element(zones.get_list_attribute(\"names\"), count.index)}",
+        #                     cidr_block="${cidrsubnet(\"10.0.0.0/16\", 8, count.index)}",
+        #                     # availability_zone = "${Fn.element(zones.names, count.index)}",
+        #                     # cidr_block = '10.0.' + "${(each.key + 1)}" + '.0/24',
+        #                     tags = {"Name":myTag + "-subnet"})
+
+        # subnet.add_override("count", Fn.length_of(zones.names))
+        # subnet.add_override("availability_zone", f"\\${Fn.element(Token().as_list(zones.names), count.index)}")
+        # subnet.add_override("availability_zone", Fn.element(Token().as_list(zones.names), count.index))
+        # subnet.add_override("availability_zone", Fn.element(zones.names, count.index))
+
+        # subnet1 = vpc.Subnet(self, "Subnet1",
+        #                     vpc_id = myVpc.id,
+        #                     availability_zone = "us-east-2a",
+        #                     cidr_block = '10.0.1.0/24',
+        #                     tags = {"Name":myTag + "subnet1"})
+
+        # subnet2 = vpc.Subnet(self, "Subnet2",
+        #                     vpc_id = myVpc.id,
+        #                     availability_zone = "us-east-2b",
+        #                     cidr_block = '10.0.2.0/24',
+        #                     tags = {"Name":myTag + "-subnet2"})
+
+        # subnet3 = vpc.Subnet(self, "Subnet3",
+        #                     vpc_id = myVpc.id,
+        #                     availability_zone = "us-east-2c",
+        #                     cidr_block = '10.0.3.0/24',
+        #                     tags = {"Name":myTag + "-subnet3"})
 
         myIp = get_my_ip()
         myCidrBlk = myIp + '/32'
@@ -70,28 +99,31 @@ class MyStack(TerraformStack):
                             filter = [amiFilter1, amiFilter2]
                             )
 
-        instance = ec2.Instance(self, "Instance",
-                                instance_type = "t2.micro",
-                                ami = ami.id,
-                                vpc_security_group_ids = [sg.id],
-                                subnet_id = subnet1.id,
-                                tags = {"Name":myTag + "-instance"})
+        # instance = ec2.Instance(self, "Instance",
+        #                         instance_type = "t2.micro",
+        #                         ami = ami.id,
+        #                         vpc_security_group_ids = [sg.id],
+        #                         subnet_id = subnet.get(0).id,
+        #                         tags = {"Name":myTag + "-instance"})
 
+        TerraformOutput(self, "azs",
+                        value=zones.names)
         TerraformOutput(self, "vpc_id",
                         value=myVpc.id)
-        TerraformOutput(self, "subnet1_id",
-                        value=subnet1.id)
-        TerraformOutput(self, "subnet2_id",
-                        value=subnet2.id)
-        TerraformOutput(self, "subnet3_id",
-                        value=subnet3.id)
+        # TerraformOutput(self, "subnet1_id",
+        #                 value=subnet[].id)
+        # TerraformOutput(self, "subnet1_id",
+        #                 value=subnet1.id)
+        # TerraformOutput(self, "subnet2_id",
+        #                 value=subnet2.id)
+        # TerraformOutput(self, "subnet3_id",
+        #                 value=subnet3.id)
         TerraformOutput(self, "sg_id",
                         value=sg.id)
         TerraformOutput(self, "ami_id",
                         value=ami.id)
-        TerraformOutput(self, "instance_id",
-                        value=instance.id,
-                        )
+        # TerraformOutput(self, "instance_id",
+        #                 value=instance.id,)
 
 app = App()
 MyStack(app, "learn-cdktf-vpc")
