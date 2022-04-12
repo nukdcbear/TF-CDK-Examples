@@ -24,7 +24,7 @@ class MyStack(TerraformStack):
 
         AwsProvider(self, "AWS", region="us-east-2")
 
-        zones = datasources.DataAwsAvailabilityZones(self, "zones",
+        azones = datasources.DataAwsAvailabilityZones(self, "zones",
                                                     state = "available")
 
         # userName = get_username()
@@ -36,10 +36,12 @@ class MyStack(TerraformStack):
                         cidr_block = '10.0.0.0/16')
 
         n = 0
-        for azname in zones.names:
-            n += 1
+        # numazs = int(Fn.length_of(azones.get_list_attribute("names")))
+        for index in range(3):
+            n = index + 1
+            azname = Fn.element(azones.names, index)
             cidrblk = "10.0."+str(n)+".0/24"
-            subnet = vpc.Subnet(self, "Subnet",
+            subnet = vpc.Subnet(self, "Subnet"+str(n),
                                 vpc_id = myVpc.id,
                                 availability_zone=azname,
                                 cidr_block=cidrblk,
@@ -107,7 +109,7 @@ class MyStack(TerraformStack):
         #                         tags = {"Name":myTag + "-instance"})
 
         TerraformOutput(self, "azs",
-                        value=zones.names)
+                        value=azones.names)
         TerraformOutput(self, "vpc_id",
                         value=myVpc.id)
         # TerraformOutput(self, "subnet1_id",
