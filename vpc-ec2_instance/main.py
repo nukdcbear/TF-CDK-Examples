@@ -35,31 +35,26 @@ class MyStack(TerraformStack):
                         tags = {"Name":myTag + "-vpc"},
                         cidr_block = '10.0.0.0/16')
 
-        n = 0
-        # numazs = int(Fn.length_of(azones.get_list_attribute("names")))
-        for index in range(3):
-            n = index + 1
-            azname = Fn.element(azones.names, index)
-            cidrblk = "10.0."+str(n)+".0/24"
-            subnet = vpc.Subnet(self, "Subnet"+str(n),
-                                vpc_id = myVpc.id,
-                                availability_zone=azname,
-                                cidr_block=cidrblk,
-                                tags = {"Name":myTag + "-subnet"})
+        # n = 0
+        # # numazs = int(Fn.length_of(azones.get_list_attribute("names")))
+        # for index in range(3):
+        #     n = index + 1
+        #     azname = Fn.element(azones.names, index)
+        #     cidrblk = "10.0."+str(n)+".0/24"
+        #     subnet = vpc.Subnet(self, "Subnet"+str(n),
+        #                         vpc_id = myVpc.id,
+        #                         availability_zone=azname,
+        #                         cidr_block=cidrblk,
+        #                         tags = {"Name":myTag + "-subnet"})
 
 
-        # subnet = vpc.Subnet(self, "Subnet",
-        #                     vpc_id = myVpc.id,
-        #                     availability_zone="${Fn.element(zones.get_list_attribute(\"names\"), count.index)}",
-        #                     cidr_block="${cidrsubnet(\"10.0.0.0/16\", 8, count.index)}",
-        #                     # availability_zone = "${Fn.element(zones.names, count.index)}",
-        #                     # cidr_block = '10.0.' + "${(each.key + 1)}" + '.0/24',
-        #                     tags = {"Name":myTag + "-subnet"})
+        subnet = vpc.Subnet(self, "Subnet",
+                            vpc_id = myVpc.id,
+                            availability_zone="${data." + azones.terraform_resource_type + "." + azones.friendly_unique_id + ".names[count.index]}",
+                            cidr_block="${cidrsubnet(\"10.0.0.0/16\", 8, count.index)}",
+                            tags = {"Name":myTag + "-subnet"})
 
-        # subnet.add_override("count", Fn.length_of(zones.names))
-        # subnet.add_override("availability_zone", f"\\${Fn.element(Token().as_list(zones.names), count.index)}")
-        # subnet.add_override("availability_zone", Fn.element(Token().as_list(zones.names), count.index))
-        # subnet.add_override("availability_zone", Fn.element(zones.names, count.index))
+        subnet.add_override("count", Fn.length_of(azones.names))
 
         # subnet1 = vpc.Subnet(self, "Subnet1",
         #                     vpc_id = myVpc.id,
@@ -101,25 +96,18 @@ class MyStack(TerraformStack):
                             filter = [amiFilter1, amiFilter2]
                             )
 
-        # instance = ec2.Instance(self, "Instance",
-        #                         instance_type = "t2.micro",
-        #                         ami = ami.id,
-        #                         vpc_security_group_ids = [sg.id],
-        #                         subnet_id = subnet.get(0).id,
-        #                         tags = {"Name":myTag + "-instance"})
+        instance = ec2.Instance(self, "Instance",
+                                instance_type = "t2.micro",
+                                ami = ami.id,
+                                vpc_security_group_ids = [sg.id],
+                                subnet_id = subnet.get(0).id,
+                                tags = {"Name":myTag + "-instance"})
 
         TerraformOutput(self, "azs",
                         value=azones.names)
         TerraformOutput(self, "vpc_id",
                         value=myVpc.id)
-        # TerraformOutput(self, "subnet1_id",
-        #                 value=subnet[].id)
-        # TerraformOutput(self, "subnet1_id",
-        #                 value=subnet1.id)
-        # TerraformOutput(self, "subnet2_id",
-        #                 value=subnet2.id)
-        # TerraformOutput(self, "subnet3_id",
-        #                 value=subnet3.id)
+
         TerraformOutput(self, "sg_id",
                         value=sg.id)
         TerraformOutput(self, "ami_id",
