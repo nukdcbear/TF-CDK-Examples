@@ -100,20 +100,21 @@ class MyStack(TerraformStack):
                                 instance_type = "t2.micro",
                                 ami = ami.id,
                                 vpc_security_group_ids = [sg.id],
-                                subnet_id = subnet.get(0).id,
+                                subnet_id = "${" + subnet.terraform_resource_type + "." + subnet.friendly_unique_id + ".0.id}",
                                 tags = {"Name":myTag + "-instance"})
 
         TerraformOutput(self, "azs",
                         value=azones.names)
         TerraformOutput(self, "vpc_id",
                         value=myVpc.id)
-
+        TerraformOutput(self, "subnet_ids",
+                        value="${" + subnet.terraform_resource_type + "." + subnet.friendly_unique_id + ".*.id}")
         TerraformOutput(self, "sg_id",
                         value=sg.id)
         TerraformOutput(self, "ami_id",
                         value=ami.id)
-        # TerraformOutput(self, "instance_id",
-        #                 value=instance.id,)
+        TerraformOutput(self, "instance_id",
+                        value=instance.id,)
 
 app = App()
 MyStack(app, "learn-cdktf-vpc")
