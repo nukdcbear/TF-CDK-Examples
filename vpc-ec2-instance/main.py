@@ -3,7 +3,7 @@ from re import sub
 import requests
 from typing import Protocol
 from constructs import Construct
-from cdktf import App, TerraformStack, TerraformOutput, Fn, Token
+from cdktf import App, TerraformStack, TerraformOutput, Fn, Token, S3Backend
 from cdktf_cdktf_provider_aws import AwsProvider, vpc, ec2, datasources
 
 def get_my_ip():
@@ -22,14 +22,20 @@ class MyStack(TerraformStack):
     def __init__(self, scope: Construct, ns: str):
         super().__init__(scope, ns)
 
+        userName = get_username()
+        # userName = 'dcb'
+        myTag = 'cdktf-' + userName
+
         AwsProvider(self, "AWS", region="us-east-2")
+
+        S3Backend(self,
+                bucket = "dcb-remote-states",
+                key = ".cdktf/remote-state-" + ns,
+                region = "us-east-2"
+        )
 
         azones = datasources.DataAwsAvailabilityZones(self, "zones",
                                                     state = "available")
-
-        # userName = get_username()
-        userName = 'dcb'
-        myTag = 'cdktf-' + userName
 
         myVpc = vpc.Vpc(self, "CustomVpc",
                         tags = {"Name":myTag + "-vpc"},
@@ -117,6 +123,6 @@ class MyStack(TerraformStack):
                         value=instance.id,)
 
 app = App()
-MyStack(app, "learn-cdktf-vpc")
+MyStack(app, "vpc-ec2-instance")
 
 app.synth()
