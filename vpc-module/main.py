@@ -18,8 +18,8 @@ class MyStack(TerraformStack):
         aZones = []
         for index, item in enumerate(["a", "b", "c"]):
             aZones.append(myRegion + item)
-            publicSubnet.append(Fn.cidrsubnet(myVpcCidrBlock, 5, index))
-            privateSubnet.append(Fn.cidrsubnet(myVpcCidrBlock, 5, index + 3))
+            publicSubnet.append(Fn.cidrsubnet(myVpcCidrBlock, 4, index))
+            privateSubnet.append(Fn.cidrsubnet(myVpcCidrBlock, 4, index + 3))
 
         S3Backend(
             self,
