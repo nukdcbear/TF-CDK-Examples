@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 from constructs import Construct
-from cdktf import App, TerraformStack, TerraformOutput, S3Backend
+from cdktf import App, TerraformStack, TerraformOutput, S3Backend, Fn
 from cdktf_cdktf_provider_aws import AwsProvider
 from imports.terraform_aws_modules.aws import Vpc
 
@@ -9,12 +9,24 @@ class MyStack(TerraformStack):
     def __init__(self, scope: Construct, ns: str):
         super().__init__(scope, ns)
 
+
+        myRegion = "us-east-2"
+        myVpcCidrBlock = "10.0.0.0/16"
+
+        publicSubnet = []
+        privateSubnet = []
+        aZones = []
+        for index, item in enumerate(["a", "b", "c"]):
+            aZones.append(myRegion + item)
+            publicSubnet.append(Fn.cidrsubnet(myVpcCidrBlock, 5, index))
+            privateSubnet.append(Fn.cidrsubnet(myVpcCidrBlock, 5, index + 3))
+
         S3Backend(
             self,
             bucket="dcb-remote-states",
             encrypt=True,
             key="tfstates/domo-vpc",
-            region="us-east-2",
+            region=myRegion,
         )
 
         AwsProvider(self, "aws", region="us-east-2")
@@ -22,15 +34,15 @@ class MyStack(TerraformStack):
         aws_vpc = Vpc(
             self,
             "aws_vpc",
-            azs=["us-east-2a", "us-east-2b", "us-east-2c"],
-            cidr="10.0.0.0/16",
+            azs=aZones,
+            cidr=myVpcCidrBlock,
             enable_dns_hostnames=True,
             enable_dns_support=True,
             enable_nat_gateway=True,
             enable_vpn_gateway=False,
             name="domo-vpc",
-            private_subnets=["10.0.128.0/20", "10.0.144.0/20", "10.0.160.0/20"],
-            public_subnets=["10.0.0.0/20", "10.0.16.0/20", "10.0.32.0/20"],
+            private_subnets=privateSubnet,
+            public_subnets=publicSubnet,
             tags={"Environment": "dev", "Name": "domo-vpc", "Terraform": "true"},
         )
 
